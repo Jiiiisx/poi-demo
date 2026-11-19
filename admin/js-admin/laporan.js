@@ -1,0 +1,462 @@
+document.addEventListener('DOMContentLoaded', function () {
+    let salesPerformance = {};
+    let allSalesChart = null;
+    let singleSalesChart = null;
+    const salesDataRanges = window.POIUtils.getSalesDataRanges();
+
+    const salesFilter = document.getElementById('sales-filter');
+    const allSalesView = document.getElementById('all-sales-view');
+    const singleSalesView = document.getElementById('single-sales-view');
+
+    const billingMonthFilter = document.getElementById('billing-month-filter');
+    const generateMessageBtn = document.getElementById('generate-message-btn');
+    const messageGeneratorOutput = document.getElementById('message-generator-output');
+
+    function processApiResponse(apiResponse) {
+        const performanceData = {};
+        const reverseSalesDataRanges = Object.fromEntries(Object.entries(salesDataRanges).map(([k, v]) => [v, k]));
+        const requestedRanges = Object.values(salesDataRanges);
+
+        if (apiResponse.valueRanges) {
+            apiResponse.valueRanges.forEach((valueRange, index) => {
+                const namedRange = requestedRanges[index];
+                const salesName = reverseSalesDataRanges[namedRange];
+
+                if (salesName && valueRange.values && valueRange.values.length > 1) {
+                    const headers = valueRange.values[0];
+                    const nameIndex = headers.findIndex(h => h.toLowerCase() === 'nama pelanggan');
+                    const customers = valueRange.values.slice(1).map(row => {
+                        if (!row[nameIndex] || row[nameIndex].trim() === '') return null;
+                        const customerData = {};
+                        headers.forEach((header, idx) => {
+                            customerData[header] = row[idx] || '';
+                        });
+                        return customerData;
+                    }).filter(Boolean);
+
+                    performanceData[salesName] = { customers, totalCustomers: customers.length, headers };
+                }
+            });
+        }
+        return performanceData;
+    }
+
+    async function loadAndProcessSalesData() {
+        const ranges = Object.values(salesDataRanges).join(',');
+        try {
+            const response = await window.POIUtils.fetchWithAdminAuth(`/api?action=fetch-monitoring&ranges=${ranges}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            salesPerformance = processApiResponse(data);
+            return true;
+        } catch (error) {
+            console.error('Failed to load sales data:', error);
+            return false;
+        }
+    }
+
+    function populateBillingMonthFilter() {
+        if (!billingMonthFilter) return;
+        const allHeaders = new Set();
+        for (const sales in salesPerformance) {
+            (salesPerformance[sales].headers || []).forEach(header => {
+                if (header.toLowerCase().startsWith('billing')) {
+                    allHeaders.add(header);
+                }
+            });
+        }
+        const sortedMonths = Array.from(allHeaders).sort((a, b) => {
+            const dateA = window.POIUtils.parseHeaderDate(a);
+            const dateB = window.POIUtils.parseHeaderDate(b);
+            if (!dateA || !dateB) return 0;
+            return dateB - dateA;
+        });
+        const optionsHtml = sortedMonths
+            .map(month => `<option value="${window.POIUtils.escapeHtml(month)}">${window.POIUtils.escapeHtml(month)}</option>`)
+            .join('');
+        billingMonthFilter.innerHTML = `<option value="">Pilih Bulan</option>${optionsHtml}`;
+    }
+
+    function generateBillingMessages() {
+        const selectedMonth = billingMonthFilter.value;
+        const selectedSales = salesFilter.value;
+        const statusCheckboxes = document.querySelectorAll('#status-checkboxes input[type="checkbox"]:checked');
+        const selectedStatuses = Array.from(statusCheckboxes).map(cb => cb.value.toUpperCase());
+
+        if (selectedStatuses.length === 0) {
+            alert('Silakan pilih minimal satu status pelanggan.');
+            return;
+        }
+        if (!selectedMonth && (selectedStatuses.includes('PAID') || selectedStatuses.includes('UNPAID'))) {
+            alert('Silakan pilih bulan tagihan jika status PAID atau UNPAID dipilih.');
+            return;
+        }
+
+        const customersBySales = {};
+        const allHeaders = Array.from(Object.values(salesPerformance).reduce((acc, { headers }) => {
+            (headers || []).forEach(h => acc.add(h));
+            return acc;
+        }, new Set()));
+
+        const billingHeaders = allHeaders.filter(h => h.toLowerCase().startsWith('billing'));
+        const now = new Date();
+        const sortedBillingHeaders = billingHeaders
+            .filter(header => window.POIUtils.parseHeaderDate(header) <= now)
+            .sort((a, b) => window.POIUtils.parseHeaderDate(a) - window.POIUtils.parseHeaderDate(b));
+
+        for (const salesName in salesPerformance) {
+            if (selectedSales !== 'all' && salesName !== selectedSales) continue;
+
+            const salesData = salesPerformance[salesName];
+            if (!salesData.customers) continue;
+
+            const matchingCustomers = salesData.customers.filter(customer => {
+                const unpaidCount = (selectedStatuses.includes('PRA NPC') || selectedStatuses.includes('CTO'))
+                    ? window.POIUtils.countConsecutiveUnpaid(customer, sortedBillingHeaders)
+                    : 0;
+
+                for (const status of selectedStatuses) {
+                    if (status === 'PAID' || status === 'UNPAID') {
+                        if ((customer[selectedMonth] || '').trim().toUpperCase() === status) {
+                            return true;
+                        }
+                    } else if (status === 'PRA NPC') {
+                        if (unpaidCount === 2) return true;
+                    } else if (status === 'CTO') {
+                        if (unpaidCount >= 3) return true;
+                    }
+                }
+                return false;
+            });
+
+            if (matchingCustomers.length > 0) {
+                customersBySales[salesName] = matchingCustomers;
+            }
+        }
+        renderGeneratedMessages(customersBySales, selectedMonth, selectedStatuses, selectedSales);
+    }
+
+    function renderGeneratedMessages(customersBySales, selectedMonth, selectedStatuses, selectedSales) {
+        messageGeneratorOutput.innerHTML = '';
+        messageGeneratorOutput.style.display = 'block';
+        const monthName = selectedMonth
+            ? selectedMonth.replace('Billing ', '').split(' ')[0].toUpperCase()
+            : new Date().toLocaleString('default', { month: 'short' }).toUpperCase();
+        const statusText = selectedStatuses.join(', ');
+
+        if (Object.keys(customersBySales).length === 0) {
+            messageGeneratorOutput.innerHTML = `<p>Tidak ada pelanggan dengan status "${window.POIUtils.escapeHtml(statusText)}" yang cocok dengan kriteria.</p>`;
+            return;
+        }
+
+        const salesTitle = selectedSales === 'all' ? 'ALL_SALES_DEMO' : `Sales: ${selectedSales.toUpperCase()}`;
+        const fragment = document.createDocumentFragment();
+        for (const salesName in customersBySales) {
+            const customers = customersBySales[salesName];
+            const messageBlock = document.createElement('div');
+            messageBlock.className = 'sales-message-block';
+            const titleMonth = (selectedStatuses.includes('PAID') || selectedStatuses.includes('UNPAID'))
+                ? `BULAN ${monthName}`
+                : `PERIODE ${new Date().toLocaleString('default', { month: 'short' }).toUpperCase()}`;
+            let messageContent = `*${statusText} ${titleMonth}*\n*${salesTitle}*\n\n`;
+
+            if (selectedSales === 'all') {
+                messageContent += `*Sales: ${salesName.toUpperCase()}*\n`;
+            }
+
+            customers.forEach((customer, index) => {
+                const name = customer['Nama Pelanggan'] || '';
+                const noInternet = customer['Nomor Internet'] || '';
+                const noTelepon = customer['No Customer'] || '';
+                const phonePart = noTelepon ? `, ${noTelepon}` : '';
+                messageContent += `${index + 1}. ${name.toUpperCase()} - ${noInternet}${phonePart}\n`;
+            });
+
+            const safeSalesName = window.POIUtils.escapeHtml(salesName);
+            messageBlock.innerHTML = `
+                <div class="sales-message-header">
+                    <h4>Pesan untuk: ${safeSalesName}</h4>
+                    <button class="copy-button" data-sales="${safeSalesName}">Salin Pesan</button>
+                </div>
+                <div class="message-content" id="message-for-${safeSalesName}">${window.POIUtils.escapeHtml(messageContent.trim())}</div>
+            `;
+            fragment.appendChild(messageBlock);
+        }
+        messageGeneratorOutput.appendChild(fragment);
+    }
+
+    function populateSalesFilter() {
+        const salesNames = Object.keys(salesPerformance).sort();
+        const fragment = document.createDocumentFragment();
+        salesNames.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            fragment.appendChild(option);
+        });
+        salesFilter.appendChild(fragment);
+    }
+
+    function renderLeaderboardTable(salesData) {
+        const container = document.getElementById('leaderboard-table-container');
+        if (!container) return;
+        const table = document.createElement('table');
+        table.className = 'customer-table';
+        const thead = document.createElement('thead');
+        const tbody = document.createElement('tbody');
+        thead.innerHTML = '<tr><th>Rank</th><th>Sales Name</th><th>Total Pelanggan</th></tr>';
+        const fragment = document.createDocumentFragment();
+        salesData.forEach((sales, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${index + 1}</td><td>${window.POIUtils.escapeHtml(sales.name)}</td><td>${sales.totalCustomers}</td>`;
+            fragment.appendChild(tr);
+        });
+        tbody.appendChild(fragment);
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function renderAllSalesView() {
+        const salesNames = Object.keys(salesPerformance);
+        const salesData = salesNames
+            .map(name => ({ name, totalCustomers: salesPerformance[name].totalCustomers }))
+            .sort((a, b) => b.totalCustomers - a.totalCustomers);
+        const totalSales = salesData.length;
+        const totalPelanggan = salesData.reduce((sum, sales) => sum + sales.totalCustomers, 0);
+        const avgPerSales = totalSales > 0 ? (totalPelanggan / totalSales).toFixed(1) : 0;
+        const topPerformer = totalSales > 0 ? salesData[0].name : '-';
+
+        document.getElementById('summary-total-sales').textContent = totalSales;
+        document.getElementById('summary-total-pelanggan').textContent = totalPelanggan;
+        document.getElementById('summary-avg-per-sales').textContent = avgPerSales;
+        document.getElementById('summary-top-performer').textContent = topPerformer;
+
+        const chartLabels = salesData.map(s => s.name);
+        const chartData = salesData.map(s => s.totalCustomers);
+        const ctx = document.getElementById('allSalesChart').getContext('2d');
+        if (allSalesChart) allSalesChart.destroy();
+
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#d9363e';
+        const gradient = ctx.createLinearGradient(0, 0, 600, 0);
+        gradient.addColorStop(0, primaryColor);
+        gradient.addColorStop(1, '#ff7e5f');
+
+        allSalesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Jumlah Pelanggan',
+                    data: chartData,
+                    backgroundColor: gradient,
+                    borderRadius: 4,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#fff',
+                        titleColor: '#333',
+                        bodyColor: '#666',
+                        borderColor: '#ddd',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: { label: (context) => ` ${context.raw} Pelanggan` }
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, grid: { drawBorder: false }, ticks: { font: { family: "'Poppins', sans-serif" } } },
+                    y: { grid: { display: false }, ticks: { font: { family: "'Poppins', sans-serif" } } }
+                }
+            }
+        });
+        renderLeaderboardTable(salesData);
+    }
+
+    function renderSingleSalesView(salesName) {
+        const salesData = salesPerformance[salesName];
+        if (!salesData) return;
+
+        document.getElementById('total-pelanggan-sales').textContent = salesData.totalCustomers;
+        let paidCustomers = 0;
+        let unpaidCustomers = 0;
+        const billingColumns = Object.keys(salesData.customers[0] || {}).filter(h => h.toLowerCase().startsWith('billing'));
+        const sortedBillingColumns = billingColumns.sort((a, b) => {
+            const dateA = window.POIUtils.parseHeaderDate(a);
+            const dateB = window.POIUtils.parseHeaderDate(b);
+            if (!dateA || !dateB) return 0;
+            return dateA - dateB;
+        });
+
+        salesData.customers.forEach(customer => {
+            let latestStatus = '';
+            for (let i = sortedBillingColumns.length - 1; i >= 0; i--) {
+                const col = sortedBillingColumns[i];
+                const status = (customer[col] || '').trim().toLowerCase();
+                if (status && status !== 'n/a') {
+                    latestStatus = status;
+                    break;
+                }
+            }
+            if (latestStatus === 'paid') paidCustomers++;
+            else if (latestStatus === 'unpaid') unpaidCustomers++;
+        });
+
+        document.getElementById('paid-customers-sales').textContent = paidCustomers;
+        document.getElementById('unpaid-customers-sales').textContent = unpaidCustomers;
+
+        const monthlyAcquisitions = {};
+        salesData.customers.forEach(customer => {
+            for (const monthColumn of sortedBillingColumns) {
+                const status = (customer[monthColumn] || '').trim();
+                if (status && status.toUpperCase() !== 'N/A') {
+                    const acquisitionDate = window.POIUtils.parseHeaderDate(monthColumn);
+                    if (acquisitionDate) {
+                        const monthYear = `${acquisitionDate.getMonth() + 1}/${acquisitionDate.getFullYear()}`;
+                        monthlyAcquisitions[monthYear] = (monthlyAcquisitions[monthYear] || 0) + 1;
+                        break;
+                    }
+                }
+            }
+        });
+
+        const sortedAcquisitionMonths = Object.keys(monthlyAcquisitions).sort((a, b) => {
+            const [m1, y1] = a.split('/');
+            const [m2, y2] = b.split('/');
+            return new Date(y1, m1 - 1) - new Date(y2, m2 - 1);
+        });
+
+        const chartLabels = sortedAcquisitionMonths;
+        const chartData = sortedAcquisitionMonths.map(month => monthlyAcquisitions[month]);
+        const ctx = document.getElementById('singleSalesChart').getContext('2d');
+        if (singleSalesChart) singleSalesChart.destroy();
+
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#d9363e';
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, primaryColor);
+        gradient.addColorStop(1, 'rgba(217, 54, 62, 0.1)');
+
+        singleSalesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'New Customers',
+                    data: chartData,
+                    backgroundColor: gradient,
+                    borderColor: primaryColor,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: primaryColor,
+                    pointHoverRadius: 7,
+                    pointHoverBackgroundColor: primaryColor,
+                    pointHoverBorderColor: '#fff',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    }
+
+    function updateView() {
+        const selectedSales = salesFilter.value;
+        if (selectedSales === 'all') {
+            allSalesView.style.display = 'block';
+            singleSalesView.style.display = 'none';
+            renderAllSalesView();
+        } else {
+            allSalesView.style.display = 'none';
+            singleSalesView.style.display = 'block';
+            renderSingleSalesView(selectedSales);
+        }
+    }
+
+    function setupEventListeners() {
+        salesFilter.addEventListener('change', updateView);
+
+        if (generateMessageBtn) {
+            generateMessageBtn.addEventListener('click', generateBillingMessages);
+        }
+
+        const statusSelectBox = document.getElementById('status-select-box');
+        const statusCheckboxes = document.getElementById('status-checkboxes');
+
+        if (statusSelectBox) {
+            statusSelectBox.addEventListener('click', function () {
+                statusCheckboxes.classList.toggle('visible');
+            });
+
+            statusCheckboxes.addEventListener('change', function () {
+                const selected = Array.from(statusCheckboxes.querySelectorAll('input:checked')).map(cb => cb.parentElement.innerText.trim());
+                if (selected.length) {
+                    statusSelectBox.innerHTML = `<span class="selected-items">${selected.map(s => `<span class="selected-item-pill">${window.POIUtils.escapeHtml(s)}</span>`).join('')}</span>`;
+                } else {
+                    statusSelectBox.innerHTML = '<span class="placeholder">Pilih status...</span>';
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!statusSelectBox.contains(e.target) && !statusCheckboxes.contains(e.target)) {
+                    statusCheckboxes.classList.remove('visible');
+                }
+            });
+        }
+
+        if (messageGeneratorOutput) {
+            messageGeneratorOutput.addEventListener('click', function (e) {
+                if (e.target.classList.contains('copy-button')) {
+                    const salesName = e.target.dataset.sales;
+                    const textToCopy = document.getElementById(`message-for-${salesName}`).innerText;
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        e.target.textContent = 'Disalin!';
+                        e.target.classList.add('copied');
+                        setTimeout(() => {
+                            e.target.textContent = 'Salin Pesan';
+                            e.target.classList.remove('copied');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        alert('Gagal menyalin pesan.');
+                    });
+                }
+            });
+        }
+    }
+
+    async function init() {
+        showSkeletonLoader();
+        const success = await loadAndProcessSalesData();
+        hideSkeletonLoader();
+        if (success) {
+            populateSalesFilter();
+            populateBillingMonthFilter();
+
+            const currentMonthColumn = window.POIUtils.getCurrentMonthColumnName();
+            if (billingMonthFilter.querySelector(`option[value="${currentMonthColumn}"]`)) {
+                billingMonthFilter.value = currentMonthColumn;
+            }
+
+            updateView();
+            setupEventListeners();
+            document.dispatchEvent(new Event('page-rendered'));
+        } else {
+            document.getElementById('all-sales-view').innerHTML = '<p>Failed to load report data.</p>';
+            document.getElementById('all-sales-view').style.display = 'block';
+        }
+    }
+
+    init();
+});

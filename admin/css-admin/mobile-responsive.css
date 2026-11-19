@@ -1,0 +1,140 @@
+@media (max-width: 768px) {
+    /* --- Header Adjustments --- */
+    .main-header {
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .header-left h1 {
+        display: block;
+        font-size: 1.25rem;
+    }
+
+    /* --- Global Search --- */
+    .global-search-container {
+        width: 70%; /* Further reduced width */
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: 15px;
+        order: 3; /* Ensure it's the last item in the header flow */
+        max-width: 400px;
+    }
+
+    #globalSearchInput {
+        padding: 10px 15px 10px 35px;
+        font-size: 0.9rem;
+    }
+
+    /* --- Stats Cards --- */
+    .stats-cards {
+        gap: 15px;
+    }
+
+    .card > span {
+        font-size: 1.8rem; /* Smaller font for the main stat number */
+    }
+
+    /* --- Main Content Layout --- */
+    .main-content {
+        padding: 20px; /* Reduce padding on mobile */
+        overflow-x: hidden; /* Prevent wide tables from breaking the layout */
+    }
+    
+    .dashboard-main-content {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .chart-container,
+    .leaderboard-container,
+    #calon-pelanggan-list-container {
+        padding: 15px;
+    }
+
+    /* --- Filter & Table --- */
+    .status-filters {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .status-filters .btn {
+        margin-bottom: 5px;
+    }
+
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .filter-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* 2x2 grid for filter buttons */
+        gap: 10px;
+    }
+    
+    .filter-buttons .btn {
+        width: 100%;
+        text-align: center;
+        padding: 10px;
+    }
+
+    .table-title h2 {
+        font-size: 1.25rem;
+    }
+
+    /* Adjust table font size and padding for smaller screens */
+    .customer-table th,
+    .customer-table td {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .pagination-controls {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .pagination-controls button {
+        width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Further adjustments for very small screens */
+    .header-left h1 {
+        font-size: 1.3rem;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    .card > span {
+        font-size: 1.6rem;
+    }
+
+    .filter-buttons {
+        grid-template-columns: 1fr; /* Stack all filter buttons */
+    }
+    
+    .customer-table th,
+    .customer-table td {
+        font-size: 0.8rem;
+    }
+}
+
+/* Responsive layout for two-column pages like 'pelanggan.html' */
+@media (max-width: 992px) {
+    .two-column-layout {
+        display: flex; /* Override display: grid from pelanggan.css */
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .left-column,
+    .right-column {
+        width: 100%; /* Ensure columns take full width */
+    }
+}

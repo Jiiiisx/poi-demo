@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="../assets/favicon.ico" type="image/x-icon">
+    <title>Billing Monitoring (Live Demo)</title>
+    <script src="../js/demo-mock-api.js"></script>
+    <script src="../js/shared-utils.js"></script>
+    <script src="js-admin/auth-check.js"></script>
+    <link rel="stylesheet" href="css-admin/sidebar-layout.css">
+    <link rel="stylesheet" href="css-admin/dashboard.css">
+    <link rel="stylesheet" href="css-admin/pelanggan.css?v=1.1">
+    <link rel="stylesheet" href="css-admin/mobile-responsive.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <script>
+        // Immediately apply sidebar state from localStorage to prevent flickering
+        if (localStorage.getItem('sidebar-collapsed') === 'true') {
+            document.body.classList.add('sidebar-collapsed');
+        }
+    </script>
+    <div class="dashboard-container">
+        <aside class="sidebar"></aside>
+        <div class="overlay"></div>
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1>Billing Monitoring</h1>
+                </div>
+                <div class="header-right">
+                    <div class="global-search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="globalSearchInput" placeholder="Search for customers...">
+                        <div id="globalSearchResults" class="global-search-results"></div>
+                    </div>
+                </div>
+            </header>
+            <div class="content-area two-column-layout">
+                <div class="left-column">
+                    <div class="sales-list-container card">
+                        <h3>Sales Team</h3>
+                        <ul id="sales-list"></ul>
+                    </div>
+                </div>
+                <div class="right-column">
+                    <div class="billing-monitoring-container card">
+                        <div class="billing-header">
+                            <div class="billing-title">
+                                <h2>Billing Monitoring for <span id="selected-sales">All</span></h2>
+                            </div>
+                            <div class="billing-filters">
+                                
+                                <div class="other-filters">
+                                    <div class="filter-group">
+                                        <label for="month-filter">Bulan:</label>
+                                        <select id="month-filter"></select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>Status:</label>
+                                        <div id="status-filters" class="status-filters">
+                                            <button class="btn active" data-status="all">All</button>
+                                            <button class="btn" data-status="paid">Paid</button>
+                                            <button class="btn" data-status="unpaid">Unpaid</button>
+                                            <button class="btn" data-status="pra npc">Pra NPC</button>
+                                            <button class="btn" data-status="ct0">CT0</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <div id="billing-table-container">
+                                <p>Loading billing data...</p>
+                            </div>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="prevPage" disabled><i class="fas fa-arrow-left"></i> Previous</button>
+                            <span id="pageInfo">Page 1 of 1</span>
+                            <button id="nextPage" disabled>Next <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js-admin/sidebar.js"></script>
+    <script src="js-admin/load-sidebar.js"></script>
+    <script src="../js/google-sheets-crud.js"></script>
+    <script src="js-admin/pelanggan.js"></script>
+    <script src="js-admin/global-search.js"></script>
+    <script src="js-admin/logout.js"></script>
+</body>
+</html>

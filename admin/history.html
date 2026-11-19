@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="../assets/favicon.ico" type="image/x-icon">
+    <title>History (Live Demo)</title>
+    <script src="../js/demo-mock-api.js"></script>
+    <script src="../js/shared-utils.js"></script>
+    <script src="js-admin/auth-check.js"></script>
+    <link rel="stylesheet" href="css-admin/sidebar-layout.css">
+    <link rel="stylesheet" href="css-admin/dashboard.css">
+    <link rel="stylesheet" href="css-admin/history.css">
+    <link rel="stylesheet" href="css-admin/mobile-responsive.css">
+    <link rel="stylesheet" href="../css/modern-table.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+    <script>
+        // Immediately apply sidebar state from localStorage to prevent flickering
+        if (localStorage.getItem('sidebar-collapsed') === 'true') {
+            document.body.classList.add('sidebar-collapsed');
+        }
+    </script>
+    <div class="dashboard-container">
+        <aside class="sidebar"></aside>
+        <div class="overlay"></div>
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menu-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1>History</h1>
+                </div>
+                <div class="header-right">
+                    <div class="global-search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="globalSearchInput" placeholder="Search for customers...">
+                        <div id="globalSearchResults" class="global-search-results"></div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="skeleton-loader">
+                <div class="skeleton-analytics-cards"></div>
+                <div class="skeleton-analytics-chart"></div>
+                <div class="skeleton-table"></div>
+            </div>
+
+            <!-- Web Analytics Section -->
+            <div class="analytics-section">
+                <h2>Web Analytics</h2>
+                <div class="analytics-cards">
+                    <div class="card">
+                        <h3>Active Users</h3>
+                        <p id="active-users-count">0</p>
+                    </div>
+                    <div class="card">
+                        <h3>Total Activities</h3>
+                        <p id="total-activities-count">0</p>
+                    </div>
+                </div>
+                <div id="analytics-chart"></div>
+            </div>
+
+            <div class="table-container content-area">
+                <h2>User Activity</h2>
+                <div class="filter-controls">
+                    <input type="text" id="searchInput" placeholder="Search history...">
+                </div>
+                <div class="table-responsive">
+                    <div id="history-table-container">
+                        <!-- History table will be loaded here by JavaScript -->
+                        <p>Loading history data...</p>
+                    </div>
+                </div>
+                <div class="pagination-controls">
+                    <button id="prevPage" disabled>Previous</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button id="nextPage" disabled>Next</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js-admin/sidebar.js"></script>
+    <script src="js-admin/load-sidebar.js"></script>
+    <script src="js-admin/utils.js"></script>
+    <script src="js-admin/history.js?v=2"></script>
+    <script src="js-admin/global-search.js"></script>
+    <script src="js-admin/logout.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if the init function exists to avoid errors on other pages
+            if (typeof initHistoryPage === 'function') {
+                initHistoryPage();
+            }
+        });
+    </script>
+</body>
+</html>

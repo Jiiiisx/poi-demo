@@ -1,0 +1,119 @@
+/* Modern Table Styles */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.customer-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-family: var(--font-family, 'Poppins', sans-serif);
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+.customer-table th, .customer-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f1f1;
+    word-wrap: break-word;
+}
+.customer-table tbody tr:last-of-type td {
+    border-bottom: none;
+}
+
+.customer-table tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-sekolah {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-non-sekolah {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.status-default {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+/* Action Buttons */
+.action-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: background-color 0.3s ease;
+}
+
+.copyable-cell {
+    position: relative;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.copyable-cell span {
+    flex-grow: 1;
+}
+
+.btn-copy {
+    background: transparent !important; 
+    border: none !important;
+    color: #888;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0; /* Initially hidden */
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* Show button on hover of the cell */
+.copyable-cell:hover .btn-copy {
+    opacity: 1;
+}
+
+.btn-copy:hover {
+    background-color: #e9ecef !important;
+    color: #333;
+}
+
+.btn-view-map {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-view-map:hover {
+    background-color: #0056b3;
+}
+
+.btn-view-image {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-view-image:hover {
+    background-color: #1e7e34;
+}

@@ -1,0 +1,54 @@
+body #notification-bar {
+    position: fixed;
+    justify-content: center;
+    width: auto;
+    min-width: 260px;
+    max-width: 380px;
+    top: -100px;
+    right: 24px;
+    left: auto;
+    color: white;
+    padding: 14px 18px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    font-size: 0.95rem;
+    transition: top 0.35s ease, opacity 0.35s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+}
+
+body #notification-bar.show {
+    top: 20px;
+    right: 24px;
+    left: auto;
+    opacity: 1;
+}
+
+body #notification-bar.success {
+    background-color: #2ecc71;
+}
+
+body #notification-bar.error {
+    background-color: #e74c3c;
+}
+
+body #notification-bar.warning {
+    background-color: #d97706;
+}
+
+body #notification-bar.info {
+    background-color: #2563eb;
+}
+
+@media (max-width: 600px) {
+    body #notification-bar,
+    body #notification-bar.show {
+        left: 16px;
+        right: 16px;
+        min-width: 0;
+        max-width: none;
+    }
+}
